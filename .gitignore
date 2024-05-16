@@ -1,0 +1,8 @@
+**\data
+**\src\MinimapGenerator\Images
+
+**\.conda
+**\.idea
+**\.code
+
+*.pth
