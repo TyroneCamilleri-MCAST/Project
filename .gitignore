@@ -6,3 +6,12 @@
 *jpg
 *txt
 *.pt
+*.cache
+*.mkv
+*.zip
+
+**/dataset
+**/Models
+**/Archieve
+
+

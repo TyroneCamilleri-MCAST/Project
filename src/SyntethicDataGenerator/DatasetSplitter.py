@@ -40,4 +40,4 @@ def split_dataset(folder_path, percentage):
         shutil.copy(os.path.join(folder_path, name + '.png'), os.path.join(images_path, 'val', name + '.png'))
         shutil.copy(os.path.join(folder_path, name + '.txt'), os.path.join(labels_path, 'val', name + '.txt'))
 
-split_dataset(r'C:\Users\Abzsorb\Desktop\Mini-mapObjectDetection\screenshots\CODALLY6', 80)
+split_dataset(r'C:\Users\Abzsorb\Desktop\Mini-mapObjectDetection\dataset\object_detection\LargeDataset-ComplexBackground', 80)

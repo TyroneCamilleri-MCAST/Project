@@ -1,254 +1,161 @@
 import pygame
 import random
 import sys
-import math
 import os
 from datetime import datetime
+import math
 
-# Initialize Pygame
 pygame.init()
 
-# Screen dimensions
-SCREEN_WIDTH = 256
-SCREEN_HEIGHT = 256
+SCREEN_SIZE = (256, 256)
+PATHS = {
+    "central_icon": 'data/Icons/player24.png',
+    "enemy_image": 'data/Icons/player24_red.png',
+    "ally_image": 'data/Icons/player24_blue.png',
+    "background_folder": r'C:\Users\Abzsorb\Desktop\Mini-mapObjectDetection\data\images\Background\CallOfDutyMap'
+}
+SAVE_SETTINGS = {"image": True, "labels": True}
+ENTITY_SETTINGS = {
+    "size": (24, 24),
+    "enemy_count_range": (0, 4),
+    "ally_count_range": (0, 4),
+    "speed_range": {"enemies": (2, 5), "allies": (1, 3)}
+}
+FRAME_SETTINGS = {"regen_every_frame": True, "number_of_frames": 5000}
+BACKGROUND = {
+    "custom": True,
+    "color_range": {"min": 200, "max": 255}
+}
+LABEL = {"player": True, "enemies": True, "allies": True}
+MOVEMENT = {"player": False, "enemies": False, "allies": False}
+OPACITY = {
+    "player": {"enable": False, "min": 255, "max": 255},
+    "enemies": {"enable": False, "min": 100, "max": 255},
+    "allies": {"enable": False, "min": 100, "max": 255}
+}
+VISIBLE = {"player": True, "enemies": True, "allies": True}
+ROT_OPAC_SETTINGS = {
+    "enable": True,
+    "frames": 15,
+    "step_rot": 360 / 15,
+    "step_opac": (255 - 100) / 15,
+    "min_opac": 100,
+    "max_opac": 255
+}
 
-# Paths
-CENTRAL_ICON_PATH = 'data/player.png'
-ENEMY_IMAGE_PATH = 'data/Icons/player24_red.png'
-ALLY_IMAGE_PATH = 'data/Ally.png'
-
-# General Settings
-SAVE_IMAGE = True
-SAVE_LABELS = True
-
-# Enemy settings
-ENEMY_COUNT = 0
-ENEMY_SIZE = (24, 24)  # Size for enemies
-MIN_SPEED = 2  # Minimum speed
-MAX_SPEED = 5  # Maximum speed
-
-# Ally settings
-ALLY_COUNT = random.randint(0, 4)
-ALLY_SIZE = (24, 24)  # Size for allies
-ALLY_MIN_SPEED = 1  # Minimum speed
-ALLY_MAX_SPEED = 3  # Maximum speed
-
-# Game settings
-ROTATE_CENTER_ICON = True  # Set to True if rotation is needed
-ENABLE_PLAYER_ROTATION = True  # Set to True if rotation is needed
-ENABLE_ENEMY_MOVEMENT = False  # Set to False to stop enemy movement
-REGENERATE_ENTITIES_EVERY_FRAME = True  # Set to True to regenerate entities every frame
-ENABLE_ENEMY_OPACITY = True  # Set to False to disable enemy opacity
-ENEMY_OPACITY_MIN = 255  # Minimum opacity
-ENEMY_OPACITY_MAX = 255  # Maximum opacity
-ENABLE_ALLY_OPACITY = True  # Set to False to disable ally opacity
-ALLY_OPACITY_MIN = 255  # Minimum opacity
-ALLY_OPACITY_MAX = 255  # Maximum opacity
-SHOW_BOUNDING_BOXES = False  # Set to False to hide bounding boxes
-BOUNDING_BOX_SCALE = 1.0  # Scale factor to reduce bounding box size
-BOUNDING_BOX_OFFSET_X = 0  # Offset for bounding box along the x-axis
-BOUNDING_BOX_OFFSET_Y = 0  # Offset for bounding box along the y-axis
-
-GENERATE_ROBUST_DATASET = True
-ROTATION_NUMBER_OF_FRAMES = 15  # Total frames for rotation (0 to 360 degrees)
-OPACITY_NUMBER_OF_FRAMES = 15  # Total frames for opacity from min to max value
-
-# Calculated steps based on the number of frames
-ROTATION_STEP = 360 / ROTATION_NUMBER_OF_FRAMES
-OPACITY_STEP = (ENEMY_OPACITY_MAX - ENEMY_OPACITY_MIN) / OPACITY_NUMBER_OF_FRAMES
-
-# Visibility and labeling settings
-SHOW_ENEMIES = True  # Set to False to hide enemies
-SHOW_ALLIES = True  # Set to False to hide allies
-LABEL_ENEMIES = True  # Set to False to disable labeling of enemies
-LABEL_ALLIES = True  # Set to False to disable labeling of allies
-LABEL_PLAYER = True  # Set to False to disable labeling of the player
-
-def load_and_scale_image(path, size, opacity=None):
-    image = pygame.image.load(path).convert_alpha()
-    scaled_image = pygame.transform.scale(image, size)
+def load_image(path, size, opacity=None):
+    img = pygame.transform.scale(pygame.image.load(path).convert_alpha(), size)
     if opacity is not None:
-        scaled_image.fill((255, 255, 255, opacity), None, pygame.BLEND_RGBA_MULT)
-    return scaled_image
+        img.fill((255, 255, 255, opacity), None, pygame.BLEND_RGBA_MULT)
+    return img
 
-def create_entity(screen_width, screen_height, size, min_speed, max_speed, enable_opacity=False, opacity_min=0, opacity_max=255):
-    angle = random.randint(0, 360)
-    speed = random.randint(min_speed, max_speed)
-    dx = math.cos(math.radians(angle)) * speed
-    dy = math.sin(math.radians(angle)) * speed
-    opacity = None
-    if enable_opacity:
-        opacity = random.randint(opacity_min, opacity_max)
+def load_backgrounds(folder_path):
+    return [pygame.image.load(os.path.join(folder_path, f)).convert() for f in os.listdir(folder_path) if f.endswith(('png', 'jpg'))]
+
+def create_entity(screen_dims, size, speed_range, opacity_settings):
+    angle, speed = random.randint(0, 360), random.randint(*speed_range)
+    opacity = random.randint(opacity_settings["min"], opacity_settings["max"]) if opacity_settings["enable"] else None
     return {
-        'rect': pygame.Rect(random.randint(0, screen_width - size[0]), random.randint(0, screen_height - size[1]), *size),
-        'dx': dx,
-        'dy': dy,
+        'rect': pygame.Rect(random.randint(0, screen_dims[0] - size[0]), random.randint(0, screen_dims[1] - size[1]), *size),
+        'dx': math.cos(math.radians(angle)) * speed,
+        'dy': math.sin(math.radians(angle)) * speed,
         'angle': angle,
         'opacity': opacity
     }
 
-def get_rotated_image_and_rect(image, rect, angle):
-    rotated_image = pygame.transform.rotate(image, angle)
-    rotated_rect = rotated_image.get_rect(center=rect.center)
-    return rotated_image, rotated_rect
+def rotate_image(image, rect, angle):
+    rotated = pygame.transform.rotate(image, angle)
+    return rotated, rotated.get_rect(center=rect.center)
+
+def generate_random_pastel_color(color_range):
+    return (random.randint(color_range["min"], color_range["max"]),
+            random.randint(color_range["min"], color_range["max"]),
+            random.randint(color_range["min"], color_range["max"]))
+
+def save_frame(screen, annotations, frame, dir_path):
+    if SAVE_SETTINGS["image"]:
+        pygame.image.save(screen, os.path.join(dir_path, f"Image-{frame}.png"))
+    if SAVE_SETTINGS["labels"]:
+        with open(os.path.join(dir_path, f"Image-{frame}.txt"), 'w') as f:
+            f.write('\n'.join(annotations))
 
 def main():
-    ALLY_COUNT = random.randint(0, 4)
-    ENEMY_COUNT = 0
+    screen = pygame.display.set_mode(SCREEN_SIZE)
+    clock = pygame.time.Clock()
 
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    central_icon_base = load_and_scale_image(CENTRAL_ICON_PATH, ENEMY_SIZE)  # Base image without rotation
+    if BACKGROUND["custom"]:
+        backgrounds = load_backgrounds(PATHS["background_folder"])
 
-    enemies = [create_entity(SCREEN_WIDTH, SCREEN_HEIGHT, ENEMY_SIZE, MIN_SPEED, MAX_SPEED, ENABLE_ENEMY_OPACITY, ENEMY_OPACITY_MIN, ENEMY_OPACITY_MAX) for _ in range(ENEMY_COUNT)]
-    allies = [create_entity(SCREEN_WIDTH, SCREEN_HEIGHT, ALLY_SIZE, ALLY_MIN_SPEED, ALLY_MAX_SPEED, ENABLE_ALLY_OPACITY, ALLY_OPACITY_MIN, ALLY_OPACITY_MAX) for _ in range(ALLY_COUNT)]
-
-    central_icon_rect = central_icon_base.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-
-    clock = pygame.time.Clock()  # Create a clock object
-
-    # Create a unique directory based on the current date and time
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    screenshot_dir = os.path.join('screenshots', timestamp)
-    if not os.path.exists(screenshot_dir):
-        os.makedirs(screenshot_dir)
+    screenshot_dir = os.path.join('dataset/object_detection', timestamp)
+    os.makedirs(screenshot_dir, exist_ok=True)
 
-    running = True
-    FRAME = 0
-    current_rotation_frame = 0
-    current_opacity_frame = 0
+    base_image = load_image(PATHS["central_icon"], ENTITY_SETTINGS["size"])
+    central_icon_rect = base_image.get_rect(center=(SCREEN_SIZE[0] // 2, SCREEN_SIZE[1] // 2))
 
-    while running:
+    frame = rotation_frame = 0
+
+    while True:
+        frame += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
-
-        FRAME += 1
-        
-        ALLY_COUNT = random.randint(0, 4)
-        ENEMY_COUNT = 0
-
-
-        if REGENERATE_ENTITIES_EVERY_FRAME:
-            enemies = [create_entity(SCREEN_WIDTH, SCREEN_HEIGHT, ENEMY_SIZE, MIN_SPEED, MAX_SPEED, ENABLE_ENEMY_OPACITY, ENEMY_OPACITY_MIN, ENEMY_OPACITY_MAX) for _ in range(ENEMY_COUNT)]
-            allies = [create_entity(SCREEN_WIDTH, SCREEN_HEIGHT, ALLY_SIZE, ALLY_MIN_SPEED, ALLY_MAX_SPEED, ENABLE_ALLY_OPACITY, ALLY_OPACITY_MIN, ALLY_OPACITY_MAX) for _ in range(ALLY_COUNT)]
-
-        # Generate a random background color
-        background_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        screen.fill(background_color)
-
-        if ENABLE_PLAYER_ROTATION:
-            central_icon, central_icon_rect = get_rotated_image_and_rect(central_icon_base, central_icon_rect, current_rotation_frame * ROTATION_STEP)
-        else:
-            central_icon = central_icon_base
-
-        screen.blit(central_icon, central_icon_rect)
-
-        annotations = []
-
-        # Label the player (central icon)
-        if LABEL_PLAYER:
-            bounding_rect = central_icon_rect  # Use the exact rect of the image sprite
-
-            x_center = (bounding_rect.centerx / SCREEN_WIDTH)
-            y_center = (bounding_rect.centery / SCREEN_HEIGHT)
-            width = (bounding_rect.width / SCREEN_WIDTH)
-            height = (bounding_rect.height / SCREEN_HEIGHT)
-            annotations.append(f"2 {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}")
-
-            if SHOW_BOUNDING_BOXES:
-                pygame.draw.rect(screen, (0, 255, 0), bounding_rect, 1)
-
-        # Handle enemies
-        if SHOW_ENEMIES:
-            for enemy in enemies:
-                if ENABLE_ENEMY_MOVEMENT:
-                    enemy['rect'].x += enemy['dx']
-                    enemy['rect'].y += enemy['dy']
-
-                    if enemy['rect'].left <= 0 or enemy['rect'].right >= SCREEN_WIDTH:
-                        enemy['dx'] *= -1
-                    if enemy['rect'].top <= 0 or enemy['rect'].bottom >= SCREEN_HEIGHT:
-                        enemy['dy'] *= -1
-
-                rotation_angle = -enemy['angle'] - 90
-                enemy_image = load_and_scale_image(ENEMY_IMAGE_PATH, ENEMY_SIZE, enemy['opacity']) if ENABLE_ENEMY_OPACITY else load_and_scale_image(ENEMY_IMAGE_PATH, ENEMY_SIZE)
-                rotated_enemy_image, rotated_enemy_rect = get_rotated_image_and_rect(enemy_image, enemy['rect'], rotation_angle)
-                screen.blit(rotated_enemy_image, rotated_enemy_rect)
-
-                bounding_rect = enemy['rect']  # Use the exact rect of the image sprite
-
-                x_center = (bounding_rect.centerx / SCREEN_WIDTH)
-                y_center = (bounding_rect.centery / SCREEN_HEIGHT)
-                width = (bounding_rect.width / SCREEN_WIDTH)
-                height = (bounding_rect.height / SCREEN_HEIGHT)
-                if LABEL_ENEMIES:
-                    annotations.append(f"0 {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}")
-
-                if SHOW_BOUNDING_BOXES:
-                    pygame.draw.rect(screen, (0, 255, 0), bounding_rect, 1)
-
-        # Handle allies
-        if SHOW_ALLIES:
-            for ally in allies:
-                if ENABLE_ENEMY_MOVEMENT:
-                    ally['rect'].x += ally['dx']
-                    ally['rect'].y += ally['dy']
-
-                    if ally['rect'].left <= 0 or ally['rect'].right >= SCREEN_WIDTH:
-                        ally['dx'] *= -1
-                    if ally['rect'].top <= 0 or ally['rect'].bottom >= SCREEN_HEIGHT:
-                        ally['dy'] *= -1
-
-                rotation_angle = -ally['angle'] - 90
-                ally_image = load_and_scale_image(ALLY_IMAGE_PATH, ALLY_SIZE, ally['opacity']) if ENABLE_ALLY_OPACITY else load_and_scale_image(ALLY_IMAGE_PATH, ALLY_SIZE)
-                rotated_ally_image, rotated_ally_rect = get_rotated_image_and_rect(ally_image, ally['rect'], rotation_angle)
-                screen.blit(rotated_ally_image, rotated_ally_rect)
-
-                bounding_rect = ally['rect']  # Use the exact rect of the image sprite
-
-                x_center = (bounding_rect.centerx / SCREEN_WIDTH)
-                y_center = (bounding_rect.centery / SCREEN_HEIGHT)
-                width = (bounding_rect.width / SCREEN_WIDTH)
-                height = (bounding_rect.height / SCREEN_HEIGHT)
-                if LABEL_ALLIES:
-                    annotations.append(f"1 {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}")
-
-                if SHOW_BOUNDING_BOXES:
-                    pygame.draw.rect(screen, (0, 255, 0), bounding_rect, 1)
-
-        pygame.display.flip()
-
-        if SAVE_IMAGE:
-            pygame.image.save(screen, os.path.join(screenshot_dir, f"Image-{FRAME}.png"))
-
-        if SAVE_LABELS:
-            with open(os.path.join(screenshot_dir, f"Image-{FRAME}.txt"), 'w') as f:
-                for annotation in annotations:
-                    f.write(annotation + '\n')
-
-        if GENERATE_ROBUST_DATASET:
-            if current_rotation_frame < ROTATION_NUMBER_OF_FRAMES:
-                if ENABLE_PLAYER_ROTATION:
-                    central_icon, central_icon_rect = get_rotated_image_and_rect(central_icon_base, central_icon_rect, current_rotation_frame * ROTATION_STEP)
-                current_rotation_frame += 1
-            else:
-                current_rotation_frame = 0
-                if current_opacity_frame < OPACITY_NUMBER_OF_FRAMES:
-                    current_opacity = int(ENEMY_OPACITY_MIN + current_opacity_frame * OPACITY_STEP)
-                    current_opacity_frame += 1
-                    enemies = [create_entity(SCREEN_WIDTH, SCREEN_HEIGHT, ENEMY_SIZE, MIN_SPEED, MAX_SPEED, ENABLE_ENEMY_OPACITY, current_opacity, current_opacity) for _ in range(ENEMY_COUNT)]
-                else:
-                    pygame.quit()
-                    sys.exit()
-        else:
-            if FRAME == ROTATION_NUMBER_OF_FRAMES * OPACITY_NUMBER_OF_FRAMES:
                 pygame.quit()
                 sys.exit()
 
-        clock.tick(20)  # Aim for 20 frames per second
+        if FRAME_SETTINGS["regen_every_frame"]:
+            enemy_count = random.randint(*ENTITY_SETTINGS["enemy_count_range"])
+            ally_count = random.randint(*ENTITY_SETTINGS["ally_count_range"])
+            enemies = [create_entity(SCREEN_SIZE, ENTITY_SETTINGS["size"], ENTITY_SETTINGS["speed_range"]["enemies"], OPACITY["enemies"]) for _ in range(enemy_count)]
+            allies = [create_entity(SCREEN_SIZE, ENTITY_SETTINGS["size"], ENTITY_SETTINGS["speed_range"]["allies"], OPACITY["allies"]) for _ in range(ally_count)]
 
-    pygame.quit()
-    sys.exit()
+        if BACKGROUND["custom"]:
+            screen.blit(pygame.transform.scale(random.choice(backgrounds), SCREEN_SIZE), (0, 0))
+        else:
+            screen.fill(generate_random_pastel_color(BACKGROUND["color_range"]))
+
+        if ROT_OPAC_SETTINGS["enable"]:
+            rotation_angle = rotation_frame * ROT_OPAC_SETTINGS["step_rot"]
+            central_icon_rotated, central_icon_rect = rotate_image(base_image, central_icon_rect, rotation_angle)
+            rotation_frame = (rotation_frame + 1) % ROT_OPAC_SETTINGS["frames"]
+        else:
+            central_icon_rotated = base_image
+
+        if VISIBLE["player"]:
+            screen.blit(central_icon_rotated, central_icon_rect)
+
+        annotations = []
+        if LABEL["player"]:
+            x_center, y_center = central_icon_rect.centerx / SCREEN_SIZE[0], central_icon_rect.centery / SCREEN_SIZE[1]
+            width, height = central_icon_rect.width / SCREEN_SIZE[0], central_icon_rect.height / SCREEN_SIZE[1]
+            annotations.append(f"2 {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}")
+
+        for entities, img_path, label in [(enemies, PATHS["enemy_image"], 0), (allies, PATHS["ally_image"], 1)]:
+            entity_type = "enemies" if label == 0 else "allies"
+            if VISIBLE[entity_type]:
+                for ent in entities:
+                    if MOVEMENT[entity_type]:
+                        ent['rect'].x += ent['dx']
+                        ent['rect'].y += ent['dy']
+                        if ent['rect'].left <= 0 or ent['rect'].right >= SCREEN_SIZE[0]:
+                            ent['dx'] *= -1
+                        if ent['rect'].top <= 0 or ent['rect'].bottom >= SCREEN_SIZE[1]:
+                            ent['dy'] *= -1
+
+                    opacity = ent['opacity']
+                    img = load_image(img_path, ENTITY_SETTINGS["size"], opacity)
+                    img, img_rect = rotate_image(img, ent['rect'], -ent['angle'] - 90)
+                    screen.blit(img, img_rect)
+                    x_center, y_center = ent['rect'].centerx / SCREEN_SIZE[0], ent['rect'].centery / SCREEN_SIZE[1]
+                    width, height = ent['rect'].width / SCREEN_SIZE[0], ent['rect'].height / SCREEN_SIZE[1]
+                    annotations.append(f"{label} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}")
+
+        pygame.display.flip()
+        save_frame(screen, annotations, frame, screenshot_dir)
+
+        if frame == FRAME_SETTINGS["number_of_frames"]:
+            pygame.quit()
+            sys.exit()
+        clock.tick(20)
 
 if __name__ == "__main__":
     main()
