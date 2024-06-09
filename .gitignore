@@ -9,9 +9,11 @@
 *.cache
 *.mkv
 *.zip
+*.mp4
 
 **/dataset
 **/Models
 **/Archieve
-
-
+**/runs
+**/screenshots
+**/cropped-players

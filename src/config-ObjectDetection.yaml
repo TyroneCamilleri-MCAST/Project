@@ -1,5 +1,4 @@
-
-path: C:\Users\Abzsorb\Desktop\Mini-mapObjectDetection\dataset\object_detection\LargeDataset-ComplexBackground
+path: E:\Mini-mapObjectDetection\dataset\object_detection\MainModel2
 train: Images/train
 val: Images/val
 test: Images/test

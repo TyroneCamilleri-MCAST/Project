@@ -1,9 +1,9 @@
 
-path: C:\Users\Abzsorb\Desktop\Mini-mapObjectDetection\screenshots\20240530_191933
+path: E:\Mini-mapObjectDetection\dataset\object_detection\TestCase5
 train: Images/train
 val: Images/val
-test: /test
+test: Images/test
 
 nc: 8
 
-names: ['top', 'top_left', 'top_right', 'left', 'right', 'bottom', 'bottom_left' 'bottom_right']
+names: ['top', 'top_rights', 'top_right', 'left', 'right', 'bottom', 'bottom_left' 'bottom_right']
